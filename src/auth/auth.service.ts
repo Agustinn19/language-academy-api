@@ -1,16 +1,24 @@
-import {
+﻿import {
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../prisma/prisma.service';
-import { UsersService } from '../users/users.service';
-import { RegisterDto } from './dto/register.dto';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
+import * as bcrypt from "bcrypt";
+import { PrismaService } from "../prisma/prisma.service";
+import { UsersService } from "../users/users.service";
+import { RegisterDto } from "./dto/register.dto";
+
+interface JwtPayload {
+  sub: string;
+  email: string;
+  role: string;
+}
 
 @Injectable()
 export class AuthService {
+  private readonly REFRESH_SALT_ROUNDS = 10;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -18,38 +26,40 @@ export class AuthService {
     private readonly usersService: UsersService,
   ) {}
 
+  private async generateTokens(payload: JwtPayload) {
+    const accessToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.getOrThrow<string>("JWT_SECRET"),
+      expiresIn: "15m",
+    });
+
+    const refreshToken = await this.jwtService.signAsync(payload, {
+      secret: this.configService.getOrThrow<string>("JWT_REFRESH_SECRET"),
+      expiresIn: "7d",
+    });
+
+    const hashedRefreshToken = await bcrypt.hash(
+      refreshToken,
+      this.REFRESH_SALT_ROUNDS,
+    );
+
+    await this.prisma.user.update({
+      where: { id: payload.sub },
+      data: { hashedRefreshToken },
+    });
+
+    return { accessToken, refreshToken };
+  }
+
   async register(dto: RegisterDto) {
     const user = await this.usersService.create(dto);
-
-    const payload = {
+    const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
-
-    const accessToken = await this.jwtService.signAsync(
-      payload,
-      {
-        secret: this.configService.getOrThrow<string>(
-          'JWT_SECRET',
-        ),
-        expiresIn: '15m',
-      },
-    );
-
-    const refreshToken = await this.jwtService.signAsync(
-      payload,
-      {
-        secret: this.configService.getOrThrow<string>(
-          'JWT_REFRESH_SECRET',
-        ),
-        expiresIn: '7d',
-      },
-    );
-
+    const tokens = await this.generateTokens(payload);
     return {
-      accessToken,
-      refreshToken,
+      ...tokens,
       user,
     };
   }
@@ -60,9 +70,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException(
-        'Credenciales invalidas',
-      );
+      throw new UnauthorizedException("Credenciales invalidas");
     }
 
     const passwordMatches = await bcrypt.compare(
@@ -71,47 +79,24 @@ export class AuthService {
     );
 
     if (!passwordMatches) {
-      throw new UnauthorizedException(
-        'Credenciales invalidas',
-      );
+      throw new UnauthorizedException("Credenciales invalidas");
     }
 
-    const payload = {
+    const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
 
-    const accessToken = await this.jwtService.signAsync(
-      payload,
-      {
-        secret: this.configService.getOrThrow<string>(
-          'JWT_SECRET',
-        ),
-        expiresIn: '15m',
-      },
-    );
-
-    const refreshToken = await this.jwtService.signAsync(
-      payload,
-      {
-        secret: this.configService.getOrThrow<string>(
-          'JWT_REFRESH_SECRET',
-        ),
-        expiresIn: '7d',
-      },
-    );
+    const tokens = await this.generateTokens(payload);
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: {
-        lastLoginAt: new Date(),
-      },
+      data: { lastLoginAt: new Date() },
     });
 
     return {
-      accessToken,
-      refreshToken,
+      ...tokens,
       user: {
         id: user.id,
         email: user.email,
@@ -124,53 +109,52 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string) {
+    let payload: JwtPayload;
     try {
-      const payload = await this.jwtService.verifyAsync<{
-        sub: string;
-        email: string;
-        role: string;
-      }>(refreshToken, {
-        secret: this.configService.getOrThrow<string>(
-          'JWT_REFRESH_SECRET',
-        ),
-      });
-
-      const user = await this.prisma.user.findUnique({
-        where: {
-          id: payload.sub,
+      payload = await this.jwtService.verifyAsync<JwtPayload>(
+        refreshToken,
+        {
+          secret: this.configService.getOrThrow<string>(
+            "JWT_REFRESH_SECRET",
+          ),
         },
-      });
-
-      if (!user || !user.isActive) {
-        throw new UnauthorizedException(
-          'Refresh token invalido',
-        );
-      }
-
-      const newPayload = {
-        sub: user.id,
-        email: user.email,
-        role: user.role,
-      };
-
-      const newAccessToken =
-        await this.jwtService.signAsync(
-          newPayload,
-          {
-            secret: this.configService.getOrThrow<string>(
-              'JWT_SECRET',
-            ),
-            expiresIn: '15m',
-          },
-        );
-
-      return {
-        accessToken: newAccessToken,
-      };
-    } catch {
-      throw new UnauthorizedException(
-        'Refresh token invalido',
       );
+    } catch {
+      throw new UnauthorizedException("Refresh token invalido");
     }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+
+    if (!user || !user.isActive || !user.hashedRefreshToken) {
+      throw new UnauthorizedException("Refresh token invalido");
+    }
+
+    const refreshTokenMatches = await bcrypt.compare(
+      refreshToken,
+      user.hashedRefreshToken,
+    );
+
+    if (!refreshTokenMatches) {
+      throw new UnauthorizedException("Refresh token invalido");
+    }
+
+    const newPayload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    return this.generateTokens(newPayload);
+  }
+
+  async logout(userId: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { hashedRefreshToken: null },
+    });
+
+    return { message: "Sesion cerrada correctamente" };
   }
 }
