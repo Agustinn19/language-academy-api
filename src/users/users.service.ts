@@ -1,10 +1,10 @@
-import {
+﻿import {
   ConflictException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../prisma/prisma.service';
+} from "@nestjs/common";
+import * as bcrypt from "bcrypt";
+import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class UsersService {
@@ -45,7 +45,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('Usuario no encontrado');
+      throw new NotFoundException("Usuario no encontrado");
     }
 
     return user;
@@ -62,7 +62,7 @@ export class UsersService {
     });
 
     if (existingUser) {
-      throw new ConflictException('El email ya está registrado');
+      throw new ConflictException("El email ya está registrado");
     }
 
     const passwordHash = await bcrypt.hash(
@@ -108,7 +108,9 @@ export class UsersService {
       });
 
       if (existingUser && existingUser.id !== id) {
-        throw new ConflictException('El email ya está registrado');
+        throw new ConflictException(
+          "El email ya está registrado",
+        );
       }
     }
 
@@ -161,5 +163,9 @@ export class UsersService {
     await this.prisma.user.delete({
       where: { id },
     });
+
+    return {
+      message: "Usuario eliminado correctamente",
+    };
   }
 }
