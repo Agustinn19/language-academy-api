@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { UsersService } from '../users/users.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -22,6 +23,10 @@ describe('AuthService', () => {
           },
           {
             provide: ConfigService,
+            useValue: {},
+          },
+          {
+            provide: UsersService,
             useValue: {},
           },
         ],
