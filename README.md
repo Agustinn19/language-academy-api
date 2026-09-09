@@ -1,114 +1,154 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Language Academy API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Backend REST para una plataforma de academia de idiomas, desarrollado con NestJS, Prisma y PostgreSQL. Proyecto individual - Cuarto Proyecto Integrador.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Autor
 
-## Description
+Agustin Quintana
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Idea original
 
-## Project setup
+Plataforma de gestion de cursos de idiomas: usuarios se registran, se inscriben a cursos, y avanzan por niveles y lecciones. Idea heredada del Segundo Proyecto Integrador.
 
-```bash
-$ pnpm install
-```
+## Tecnologias
 
-## Compile and run the project
+- NestJS 11 + TypeScript
+- Prisma 7 (driver adapter `@prisma/adapter-pg`)
+- PostgreSQL
+- JWT (Passport) con access token + refresh token rotativo
+- bcrypt para hasheo de contrasenas
+- class-validator / class-transformer
+- Helmet + CORS + @nestjs/throttler (rate limiting)
+- Jest para testing
+
+## Requisitos
+
+- Node.js 20+
+- pnpm
+- PostgreSQL 14+ corriendo localmente (o via Docker)
+
+## Instalacion local
 
 ```bash
-# development
-$ pnpm run start
+# 1. Clonar el repositorio
+git clone https://github.com/Agustinn19/language-academy-api.git
+cd language-academy-api
 
-# watch mode
-$ pnpm run start:dev
+# 2. Instalar dependencias
+pnpm install
 
-# production mode
-$ pnpm run start:prod
+# 3. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales reales
+
+# 4. Aplicar migraciones de Prisma
+pnpm exec prisma migrate dev
+
+# 5. (Opcional) Poblar la base con datos de prueba
+pnpm prisma db seed
+
+# 6. Levantar el servidor en modo desarrollo
+pnpm start:dev
 ```
 
-## Run tests
+La API queda disponible en `http://localhost:3000/api`.
+
+## Variables de entorno
+
+Ver `.env.example` para la lista completa. Nunca commitear el archivo `.env` real.
+
+| Variable | Descripcion |
+|---|---|
+| `DATABASE_URL` | Cadena de conexion a PostgreSQL |
+| `JWT_SECRET` | Secreto para firmar access tokens |
+| `JWT_EXPIRES_IN` | Duracion del access token (ej. `15m`) |
+| `JWT_REFRESH_SECRET` | Secreto para firmar refresh tokens (distinto de `JWT_SECRET`) |
+| `JWT_REFRESH_EXPIRES_IN` | Duracion del refresh token (ej. `7d`) |
+| `CORS_ORIGIN` | Origen permitido para CORS |
+| `PORT` | Puerto del servidor (default: 3000) |
+
+## Usuarios de prueba (via seed)
+
+| Email | Password | Rol |
+|---|---|---|
+| admin@academy.com | AdminPassword123! | ADMIN |
+| student@academy.com | StudentPassword123! | STUDENT |
+
+## Seguridad implementada
+
+- Contrasenas hasheadas con bcrypt (10 rondas), nunca devueltas en las respuestas.
+- JWT con access token de corta duracion + refresh token rotativo, hasheado en base de datos con bcrypt.
+- Logout invalida el refresh token guardado (`hashedRefreshToken: null`).
+- Deteccion de reuso de refresh token: si el token recibido no matchea el hash guardado, se invalida toda la sesion.
+- ValidationPipe global (`whitelist`, `forbidNonWhitelisted`, `transform`) contra mass assignment.
+- Helmet para headers de seguridad HTTP.
+- CORS configurado explicitamente via `CORS_ORIGIN`.
+- Rate limiting global (20 req/min) + reforzado en `/auth/login` (5 req/min) contra fuerza bruta.
+- Ownership real en `enrollments`: un usuario solo puede ver/editar/eliminar sus propias inscripciones (salvo rol ADMIN).
+
+## Endpoints
+
+Prefijo global: `/api`
+
+### Auth
+
+| Metodo | Ruta | Guard / Rol | Descripcion |
+|---|---|---|---|
+| POST | `/api/auth/register` | Publico | Crea un usuario nuevo, devuelve access + refresh token |
+| POST | `/api/auth/login` | Publico (rate limit: 5/min) | Valida credenciales, devuelve access + refresh token |
+| POST | `/api/auth/refresh` | Requiere refresh token valido | Rota el refresh token y emite un nuevo par |
+| POST | `/api/auth/logout` | JWT (access token) | Invalida el refresh token guardado |
+
+### Users
+
+| Metodo | Ruta | Guard / Rol | Descripcion |
+|---|---|---|---|
+| GET | `/api/users` | JWT + ADMIN | Lista todos los usuarios |
+| GET | `/api/users/:id` | JWT | Obtiene un usuario por id |
+| POST | `/api/users` | JWT + ADMIN | Crea un usuario |
+| PATCH | `/api/users/:id` | JWT | Actualiza un usuario |
+| DELETE | `/api/users/:id` | JWT + ADMIN | Elimina un usuario |
+
+### Languages
+
+| Metodo | Ruta | Guard / Rol | Descripcion |
+|---|---|---|---|
+| GET | `/api/languages` | Publico | Lista los idiomas disponibles |
+| GET | `/api/languages/:id` | Publico | Obtiene un idioma por id |
+| POST | `/api/languages` | JWT | Crea un idioma |
+| PATCH | `/api/languages/:id` | JWT | Actualiza un idioma |
+| DELETE | `/api/languages/:id` | JWT | Elimina un idioma |
+
+### Levels
+
+| Metodo | Ruta | Guard / Rol | Descripcion |
+|---|---|---|---|
+| GET | `/api/levels` | Publico | Lista los niveles disponibles |
+| GET | `/api/levels/:id` | Publico | Obtiene un nivel por id |
+| POST | `/api/levels` | JWT | Crea un nivel |
+| PATCH | `/api/levels/:id` | JWT | Actualiza un nivel |
+| DELETE | `/api/levels/:id` | JWT | Elimina un nivel |
+
+### Enrollments (con ownership)
+
+| Metodo | Ruta | Guard / Rol | Ownership | Descripcion |
+|---|---|---|---|---|
+| POST | `/api/enrollments` | JWT | El `userId` sale del token, no del body | Crea una inscripcion a un curso |
+| GET | `/api/enrollments` | JWT | Devuelve solo las inscripciones del usuario logueado | Lista las inscripciones propias |
+| GET | `/api/enrollments/:id` | JWT | 403 si no es propia y no es ADMIN | Obtiene una inscripcion |
+| PATCH | `/api/enrollments/:id` | JWT | 403 si no es propia y no es ADMIN | Actualiza el estado de una inscripcion |
+| DELETE | `/api/enrollments/:id` | JWT | 403 si no es propia y no es ADMIN | Elimina una inscripcion |
+
+## Scripts disponibles
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+pnpm start:dev       # Servidor en modo watch
+pnpm build           # Compila el proyecto
+pnpm test            # Corre los tests
+pnpm prisma studio   # Abre Prisma Studio para inspeccionar la DB
+pnpm prisma db seed  # Ejecuta el seed de datos de prueba
 ```
 
-## Deployment
+## Deploy
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Pendiente de despliegue final. Se recomienda Railway o Render para la API y su base PostgreSQL asociada.
