@@ -1,13 +1,13 @@
-﻿import {
+import {
   Injectable,
   UnauthorizedException,
-} from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { ConfigService } from "@nestjs/config";
-import * as bcrypt from "bcrypt";
-import { PrismaService } from "../prisma/prisma.service";
-import { UsersService } from "../users/users.service";
-import { RegisterDto } from "./dto/register.dto";
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
+import { RegisterDto } from './dto/register.dto';
 
 interface JwtPayload {
   sub: string;
@@ -28,13 +28,13 @@ export class AuthService {
 
   private async generateTokens(payload: JwtPayload) {
     const accessToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.getOrThrow<string>("JWT_SECRET"),
-      expiresIn: "15m",
+      secret: this.configService.getOrThrow<string>('JWT_SECRET'),
+      expiresIn: '15m',
     });
 
     const refreshToken = await this.jwtService.signAsync(payload, {
-      secret: this.configService.getOrThrow<string>("JWT_REFRESH_SECRET"),
-      expiresIn: "7d",
+      secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+      expiresIn: '7d',
     });
 
     const hashedRefreshToken = await bcrypt.hash(
@@ -52,12 +52,15 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const user = await this.usersService.create(dto);
+
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
+
     const tokens = await this.generateTokens(payload);
+
     return {
       ...tokens,
       user,
@@ -70,7 +73,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException("Credenciales invalidas");
+      throw new UnauthorizedException('Credenciales invalidas');
     }
 
     const passwordMatches = await bcrypt.compare(
@@ -79,7 +82,7 @@ export class AuthService {
     );
 
     if (!passwordMatches) {
-      throw new UnauthorizedException("Credenciales invalidas");
+      throw new UnauthorizedException('Credenciales invalidas');
     }
 
     const payload: JwtPayload = {
@@ -110,17 +113,18 @@ export class AuthService {
 
   async refresh(refreshToken: string) {
     let payload: JwtPayload;
+
     try {
       payload = await this.jwtService.verifyAsync<JwtPayload>(
         refreshToken,
         {
           secret: this.configService.getOrThrow<string>(
-            "JWT_REFRESH_SECRET",
+            'JWT_REFRESH_SECRET',
           ),
         },
       );
     } catch {
-      throw new UnauthorizedException("Refresh token invalido");
+      throw new UnauthorizedException('Refresh token invalido');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -128,7 +132,7 @@ export class AuthService {
     });
 
     if (!user || !user.isActive || !user.hashedRefreshToken) {
-      throw new UnauthorizedException("Refresh token invalido");
+      throw new UnauthorizedException('Refresh token invalido');
     }
 
     const refreshTokenMatches = await bcrypt.compare(
@@ -137,7 +141,11 @@ export class AuthService {
     );
 
     if (!refreshTokenMatches) {
-      throw new UnauthorizedException("Refresh token invalido");
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { hashedRefreshToken: null },
+      });
+      throw new UnauthorizedException('Refresh token invalido');
     }
 
     const newPayload: JwtPayload = {
@@ -155,6 +163,6 @@ export class AuthService {
       data: { hashedRefreshToken: null },
     });
 
-    return { message: "Sesion cerrada correctamente" };
+    return { message: 'Sesion cerrada correctamente' };
   }
 }
