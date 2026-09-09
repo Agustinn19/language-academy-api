@@ -84,7 +84,41 @@ async function main() {
   });
 
   console.log(`Student creado/verificado: ${student.email}`);
+  const language = await prisma.language.upsert({
+    where: {
+      code: 'en',
+    },
+    update: {},
+    create: {
+      name: 'Ingles',
+      code: 'en',
+    },
+  });
 
+  console.log(`Idioma creado/verificado: ${language.name}`);
+
+  const levelA1 = await prisma.level.findUniqueOrThrow({
+    where: { code: 'A1' },
+  });
+
+  const course = await prisma.course.upsert({
+    where: {
+      slug: 'ingles-basico-a1',
+    },
+    update: {},
+    create: {
+      title: 'Ingles Basico A1',
+      slug: 'ingles-basico-a1',
+      price: 0,
+      isPublished: true,
+      isActive: true,
+      languageId: language.id,
+      levelId: levelA1.id,
+      teacherId: admin.id,
+    },
+  });
+
+  console.log(`Curso creado/verificado: ${course.title}`);
   console.log('Niveles iniciales verificados.');
 }
 

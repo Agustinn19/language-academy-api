@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { EnrollmentsModule } from './enrollments/enrollments.module';
 import { LanguagesModule } from './languages/languages.module';
 import { LevelsModule } from './levels/levels.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -19,6 +20,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     LanguagesModule,
     LevelsModule,
+    EnrollmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
