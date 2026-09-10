@@ -151,4 +151,8 @@ pnpm prisma db seed  # Ejecuta el seed de datos de prueba
 
 ## Deploy
 
-Pendiente de despliegue final. Se recomienda Railway o Render para la API y su base PostgreSQL asociada.
+API desplegada en Render: https://language-academy-api.onrender.com
+
+Base de datos PostgreSQL gestionada por Render (plan free). Las migraciones se aplican automaticamente en cada deploy via `prisma migrate deploy` (configurado en el script `start:prod`).
+
+Nota: el plan free de Render suspende la instancia tras inactividad; el primer request puede demorar hasta 50 segundos en responder.
