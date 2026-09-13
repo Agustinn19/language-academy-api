@@ -103,10 +103,12 @@ Prefijo global: `/api`
 
 | Metodo | Ruta | Guard / Rol | Descripcion |
 |---|---|---|---|
+| GET | `/api/users/me` | JWT | Obtiene el perfil del usuario autenticado |
+| PATCH | `/api/users/me` | JWT | Actualiza el perfil del usuario autenticado |
 | GET | `/api/users` | JWT + ADMIN | Lista todos los usuarios |
-| GET | `/api/users/:id` | JWT | Obtiene un usuario por id |
+| GET | `/api/users/:id` | JWT + ADMIN | Obtiene un usuario por id |
 | POST | `/api/users` | JWT + ADMIN | Crea un usuario |
-| PATCH | `/api/users/:id` | JWT | Actualiza un usuario |
+| PATCH | `/api/users/:id` | JWT + ADMIN | Actualiza un usuario |
 | DELETE | `/api/users/:id` | JWT + ADMIN | Elimina un usuario |
 
 ### Languages
