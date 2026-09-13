@@ -23,13 +23,13 @@ export class UsersController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   getMe(@Req() req: any) {
-    return this.usersService.findOne(req.user.userId || req.user.sub || req.user.id);
+    return this.usersService.findOne(req.user.id);
   }
 
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   updateMe(@Req() req: any, @Body() data: UpdateUserDto) {
-    return this.usersService.update(req.user.userId || req.user.sub || req.user.id, data);
+    return this.usersService.update(req.user.id, data);
   }
 
   @Get('admin-test')
