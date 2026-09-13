@@ -100,18 +100,15 @@ Prefijo global: `/api`
 | POST | `/api/auth/logout` | JWT (access token) | Invalida el refresh token guardado |
 
 ### Users
-
 | Metodo | Ruta | Guard / Rol | Descripcion |
 |---|---|---|---|
 | GET | `/api/users/me` | JWT | Obtiene el perfil del usuario autenticado |
 | PATCH | `/api/users/me` | JWT | Actualiza el perfil del usuario autenticado |
 | GET | `/api/users` | JWT + ADMIN | Lista todos los usuarios |
-| POST | `/api/users` | JWT + ADMIN | Crea un usuario |
 | GET | `/api/users/:id` | JWT + ADMIN | Obtiene un usuario por id |
 | POST | `/api/users` | JWT + ADMIN | Crea un usuario |
 | PATCH | `/api/users/:id` | JWT + ADMIN | Actualiza un usuario |
 | DELETE | `/api/users/:id` | JWT + ADMIN | Elimina un usuario |
-
 ### Languages
 
 | Metodo | Ruta | Guard / Rol | Descripcion |
