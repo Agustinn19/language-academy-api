@@ -98,8 +98,8 @@ Prefijo global: `/api`
 | POST | `/api/auth/login` | Publico (rate limit: 5/min) | Valida credenciales, devuelve access + refresh token |
 | POST | `/api/auth/refresh` | Requiere refresh token valido | Rota el refresh token y emite un nuevo par |
 | POST | `/api/auth/logout` | JWT (access token) | Invalida el refresh token guardado |
-
 ### Users
+
 | Metodo | Ruta | Guard / Rol | Descripcion |
 |---|---|---|---|
 | GET | `/api/users/me` | JWT | Obtiene el perfil del usuario autenticado |
